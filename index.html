@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>เกมทายชื่อโปเกมอนจากคำใบ้</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="hero-card">
+      <div>
+        <p class="eyebrow">Pokemon Hint Guess</p>
+        <h1>ทายชื่อโปเกมอนจากคำใบ้</h1>
+        <p class="subtitle">ตอบให้ได้ตั้งแต่คำใบ้แรก เพื่อรับคะแนนสูงสุด</p>
+      </div>
+      <div class="score-pill">
+        <span>คะแนนรวม</span>
+        <strong id="totalScoreText">0</strong>
+      </div>
+    </section>
+
+    <section id="loadingArea" class="panel status-panel">
+      <div class="loader"></div>
+      <h2>กำลังเตรียมเกม...</h2>
+      <p id="loadingText">กำลังโหลดโปเกมอนที่มีคำใบ้</p>
+      <div class="progress-track" aria-label="loading progress">
+        <div id="progressBar" class="progress-bar"></div>
+      </div>
+      <p class="muted">เกมนี้ใช้เฉพาะโปเกมอนที่มีคำใบ้ในระบบ และรองรับทั้งชื่ออังกฤษกับชื่อไทย</p>
+    </section>
+
+    <section id="gameArea" class="panel game-panel" hidden>
+      <header class="round-header">
+        <div>
+          <p class="eyebrow">รอบปัจจุบัน</p>
+          <h2 id="questionCounterText">ข้อที่ 1 / 10</h2>
+        </div>
+        <div class="stats-grid">
+          <div>
+            <span>ตอบถูก</span>
+            <strong id="correctCountText">0</strong>
+          </div>
+          <div>
+            <span>เฉลย</span>
+            <strong id="revealedCountText">0</strong>
+          </div>
+          <div>
+            <span>คะแนนข้อนี้</span>
+            <strong id="currentPointText">8</strong>
+          </div>
+        </div>
+      </header>
+
+      <div id="apiWarning" class="warning-box" hidden></div>
+
+      <section class="hint-card">
+        <div class="hint-title-row">
+          <h3>คำใบ้ที่เปิดอยู่</h3>
+          <span id="hintProgressText">1 / 8</span>
+        </div>
+        <ol id="hintList" class="hint-list"></ol>
+      </section>
+
+      <section class="answer-card">
+        <label for="answerInput">เลือกหรือพิมพ์ค้นหาชื่อโปเกมอน</label>
+        <input
+          id="answerInput"
+          list="pokemonOptions"
+          type="text"
+          placeholder="เช่น Pikachu, ปิกาจู, ปิกะจู"
+          autocomplete="off"
+        />
+        <datalist id="pokemonOptions"></datalist>
+
+        <div class="button-row">
+          <button id="submitButton" class="btn primary" type="button">ตอบ</button>
+          <button id="revealButton" class="btn danger" type="button">เฉลย</button>
+          <button id="nextButton" class="btn secondary" type="button" disabled>ข้อต่อไป</button>
+        </div>
+      </section>
+
+      <section id="resultBox" class="result-box" aria-live="polite"></section>
+    </section>
+
+    <section id="summaryArea" class="panel summary-panel" hidden>
+      <p class="eyebrow">สรุปผล</p>
+      <h2>จบรอบแล้ว!</h2>
+      <div class="summary-grid">
+        <div>
+          <span>คะแนนรวม</span>
+          <strong id="summaryScoreText">0</strong>
+        </div>
+        <div>
+          <span>ตอบถูก</span>
+          <strong id="summaryCorrectText">0 / 10</strong>
+        </div>
+        <div>
+          <span>กดเฉลย</span>
+          <strong id="summaryRevealText">0</strong>
+        </div>
+        <div>
+          <span>คะแนนเฉลี่ยต่อข้อ</span>
+          <strong id="summaryAverageText">0.0</strong>
+        </div>
+      </div>
+      <button id="restartButton" class="btn primary wide" type="button">เล่นอีกครั้ง</button>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

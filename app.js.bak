@@ -1,0 +1,772 @@
+const ROUND_SIZE = 10;
+const HINTS_PER_POKEMON = 8;
+const CACHE_KEY = "pokemonNameListWithJapaneseRomajiThaiForAll:v3";
+const CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7;
+const API_BASE = "https://pokeapi.co/api/v2";
+
+const hintBank = {
+  pikachu: {
+    thaiName: "ปิกาจู",
+    thaiAliases: ['ปิกะจู', 'พิคาชู'],
+    hints: [
+      "เป็นโปเกมอนขนาดเล็กที่ได้รับความนิยมมาก",
+      "มีสีหลักเป็นสีเหลือง",
+      "มีนิสัยร่าเริงและคล่องแคล่ว",
+      "เกี่ยวข้องกับพลังไฟฟ้า",
+      "มีแก้มสีแดงที่ใช้เก็บพลังไฟฟ้า",
+      "มีหางรูปร่างคล้ายสายฟ้า",
+      "เป็นคู่หูของซาโตชิในอนิเมะ",
+      "มักร้องเสียงคล้ายคำว่า Pika Pika"
+    ]
+  },
+  bulbasaur: {
+    thaiName: "ฟุชิกิดาเนะ",
+    thaiAliases: ['บัลบาซอร์', 'บูลบาซอร์'],
+    hints: [
+      "เป็นโปเกมอนเริ่มต้นตัวหนึ่งจากยุคแรก",
+      "มีลักษณะคล้ายสัตว์สี่ขาขนาดเล็ก",
+      "บนหลังมีสิ่งที่ดูคล้ายเมล็ดหรือหัวพืช",
+      "เกี่ยวข้องกับพืชและพิษ",
+      "ยิ่งเติบโต สิ่งบนหลังจะพัฒนาไปด้วย",
+      "เป็นหมายเลข 001 ใน Pokédex แห่งชาติ",
+      "สามารถวิวัฒนาการเป็น Ivysaur",
+      "ชื่อขึ้นต้นด้วย Bulba"
+    ]
+  },
+  charmander: {
+    thaiName: "ฮิโตคาเงะ",
+    thaiAliases: ['ชาร์แมนเดอร์'],
+    hints: [
+      "เป็นโปเกมอนเริ่มต้นตัวหนึ่งจากยุคแรก",
+      "รูปร่างคล้ายกิ้งก่าตัวเล็ก",
+      "มีบุคลิกกล้าหาญและดูมีพลัง",
+      "เกี่ยวข้องกับไฟ",
+      "ปลายหางมีเปลวไฟติดอยู่",
+      "เปลวไฟที่หางสะท้อนพลังชีวิตของมัน",
+      "สามารถวิวัฒนาการเป็น Charmeleon",
+      "ชื่อขึ้นต้นด้วย Char"
+    ]
+  },
+  squirtle: {
+    thaiName: "เซนิกาเมะ",
+    thaiAliases: ['สควอร์เทิล', 'เซนิกาเม'],
+    hints: [
+      "เป็นโปเกมอนเริ่มต้นตัวหนึ่งจากยุคแรก",
+      "มีรูปร่างคล้ายสัตว์ที่มีกระดอง",
+      "มักเกี่ยวข้องกับการอยู่ใกล้น้ำ",
+      "เป็นโปเกมอนธาตุน้ำ",
+      "สามารถหดตัวเข้าไปในกระดองได้",
+      "ใช้การพ่นน้ำเป็นท่าต่อสู้เด่น",
+      "สามารถวิวัฒนาการเป็น Wartortle",
+      "ชื่อฟังคล้ายคำว่า squirt"
+    ]
+  },
+  jigglypuff: {
+    thaiName: "พูริน",
+    thaiAliases: ['จิกกลีพัฟ', 'จิ๊กกลีพัฟ'],
+    hints: [
+      "เป็นโปเกมอนตัวกลมและดูน่ารัก",
+      "มีสีหลักเป็นสีชมพู",
+      "มักถูกจดจำจากบุคลิกที่เกี่ยวกับการแสดง",
+      "เกี่ยวข้องกับเสียงและการร้องเพลง",
+      "ดวงตากลมโตเป็นจุดเด่น",
+      "เพลงของมันทำให้ผู้ฟังง่วงนอนได้",
+      "ในอนิเมะมักวาดหน้าคนที่หลับใส่ไมโครโฟนปากกา",
+      "ชื่อขึ้นต้นด้วย Jiggly"
+    ]
+  },
+  meowth: {
+    thaiName: "เนียส",
+    thaiAliases: ['เมี้ยวธ์', 'เหมียวธ์', 'เมียวธ์'],
+    hints: [
+      "เป็นโปเกมอนที่มีแรงบันดาลใจจากสัตว์เลี้ยงยอดนิยม",
+      "มีลักษณะคล้ายแมว",
+      "ชอบสิ่งของแวววาว",
+      "เกี่ยวข้องกับเหรียญและเงิน",
+      "มีเหรียญติดอยู่บนหน้าผาก",
+      "สามารถใช้ท่า Pay Day ได้อย่างเป็นเอกลักษณ์",
+      "ตัวหนึ่งในอนิเมะพูดภาษาคนได้และอยู่กับทีมร็อกเก็ต",
+      "ชื่อออกเสียงคล้ายเสียงร้องของแมว"
+    ]
+  },
+  psyduck: {
+    thaiName: "โคดัก",
+    thaiAliases: ['ไซดัค', 'ไซดัก'],
+    hints: [
+      "เป็นโปเกมอนที่ดูงง ๆ และตลก",
+      "มีสีหลักเป็นสีเหลือง",
+      "รูปร่างคล้ายนกน้ำ",
+      "มักปวดหัวอยู่บ่อย ๆ",
+      "เมื่อปวดหัวมากอาจปล่อยพลังลึกลับได้",
+      "เกี่ยวข้องกับน้ำและพลังจิตในภาพจำของแฟน ๆ",
+      "คาสึมิเคยมีตัวนี้ในอนิเมะ",
+      "ชื่อมีคำว่า duck อยู่ท้ายชื่อ"
+    ]
+  },
+  eevee: {
+    thaiName: "อีวุย",
+    thaiAliases: ['อีวี่', 'อีวี'],
+    hints: [
+      "เป็นโปเกมอนขนาดเล็กที่ดูเหมือนสัตว์เลี้ยง",
+      "มีขนฟูบริเวณคอ",
+      "มีสีน้ำตาลเป็นหลัก",
+      "มีความสามารถเด่นด้านการวิวัฒนาการ",
+      "วิวัฒนาการได้หลายรูปแบบมาก",
+      "ร่างวิวัฒนาการขึ้นอยู่กับเงื่อนไขหรือไอเทมต่าง ๆ",
+      "แฟน ๆ มักเรียกร่างวิวัฒนาการรวม ๆ ว่า Eeveelutions",
+      "ชื่อสั้น ๆ มีตัว e หลายตัว"
+    ]
+  },
+  snorlax: {
+    thaiName: "คาบิกอน",
+    thaiAliases: ['สนอร์แลกซ์', 'สนอร์แล็กซ์'],
+    hints: [
+      "เป็นโปเกมอนตัวใหญ่และหนักมาก",
+      "มักถูกจดจำจากนิสัยสบาย ๆ",
+      "ชอบกินและนอน",
+      "มักขวางทางในเกมยุคแรก",
+      "ต้องใช้ Poké Flute เพื่อปลุกในบางภาค",
+      "มีรูปร่างอ้วนกลมและท้องสีอ่อน",
+      "ชื่อญี่ปุ่นคือ Kabigon",
+      "ชื่ออังกฤษสื่อถึงการนอนกรนและการผ่อนคลาย"
+    ]
+  },
+  mewtwo: {
+    thaiName: "มิวทู",
+    thaiAliases: ['มิวทูว์'],
+    hints: [
+      "เป็นโปเกมอนที่มีภาพลักษณ์ลึกลับและทรงพลัง",
+      "ไม่ได้เกิดขึ้นตามธรรมชาติแบบทั่วไป",
+      "มีรูปร่างคล้ายสิ่งมีชีวิตทดลอง",
+      "เกี่ยวข้องกับพลังจิตอย่างมาก",
+      "ถูกสร้างจากพันธุกรรมของโปเกมอนในตำนานอีกตัว",
+      "เป็นตัวหลักในภาพยนตร์โปเกมอนยุคแรก",
+      "มักถูกมองว่าเป็นหนึ่งในโปเกมอนระดับตำนานที่โด่งดังที่สุด",
+      "ชื่อมีคำว่า two อยู่ท้ายชื่อ"
+    ]
+  },
+  mew: {
+    thaiName: "มิว",
+    thaiAliases: ['มิว'],
+    hints: [
+      "เป็นโปเกมอนขนาดเล็กแต่ลึกลับมาก",
+      "มีสีชมพูอ่อน",
+      "เคลื่อนไหวได้อย่างอิสระและดูขี้เล่น",
+      "เกี่ยวข้องกับพลังจิต",
+      "ว่ากันว่ามีข้อมูลพันธุกรรมของโปเกมอนจำนวนมาก",
+      "เป็นต้นแบบทางพันธุกรรมที่เกี่ยวข้องกับ Mewtwo",
+      "เป็นโปเกมอนมายาที่มีชื่อเสียงมากจากยุคแรก",
+      "ชื่อสั้นมาก มี 3 ตัวอักษร"
+    ]
+  },
+  magikarp: {
+    thaiName: "คอยคิง",
+    thaiAliases: ['แมจิคาร์ป', 'เมจิคาร์ป'],
+    hints: [
+      "เป็นโปเกมอนที่มักถูกมองว่าอ่อนแอในช่วงแรก",
+      "มีลักษณะคล้ายปลา",
+      "มักกระโดดหรือดิ้นไปมา",
+      "เกี่ยวข้องกับน้ำ",
+      "ท่าที่จำได้มากคือ Splash",
+      "เมื่อวิวัฒนาการแล้วจะเปลี่ยนเป็นโปเกมอนที่น่าเกรงขามมาก",
+      "วิวัฒนาการเป็น Gyarados",
+      "ชื่อมีคำว่า karp ที่สื่อถึงปลา"
+    ]
+  },
+  gengar: {
+    thaiName: "เก็งกา",
+    thaiAliases: ['เกงก้า', 'เก็งการ์', 'เกนการ์'],
+    hints: [
+      "เป็นโปเกมอนที่มีภาพลักษณ์เจ้าเล่ห์",
+      "มีสีม่วงเข้มเป็นหลัก",
+      "ชอบแอบอยู่ในเงา",
+      "เกี่ยวข้องกับผีและพิษ",
+      "มีรอยยิ้มกว้างเป็นเอกลักษณ์",
+      "เป็นร่างวิวัฒนาการของ Haunter",
+      "เป็นหนึ่งในโปเกมอนสายผีที่โด่งดังที่สุด",
+      "ชื่อขึ้นต้นด้วย Gen และมีเสียงน่ากลัว"
+    ]
+  },
+  onix: {
+    thaiName: "อิวาร์ค",
+    thaiAliases: ['โอนิกซ์', 'ออนิกซ์'],
+    hints: [
+      "เป็นโปเกมอนขนาดใหญ่และยาวมาก",
+      "ร่างกายประกอบด้วยก้อนแข็งต่อกันหลายก้อน",
+      "มักอยู่ในถ้ำหรือใต้ดิน",
+      "เกี่ยวข้องกับหินและพื้นดิน",
+      "มีรูปร่างคล้ายงูหินยักษ์",
+      "ทาเคชิหรือ Brock มีตัวนี้ในอนิเมะ",
+      "สามารถวิวัฒนาการเป็น Steelix",
+      "ชื่อสั้นและคล้ายชื่อหินสีดำ"
+    ]
+  },
+  lapras: {
+    thaiName: "ลาพลาซ",
+    thaiAliases: ['ลาปราส', 'ลาพราส'],
+    hints: [
+      "เป็นโปเกมอนที่มีภาพลักษณ์อ่อนโยน",
+      "มีขนาดใหญ่และใช้เดินทางบนน้ำได้",
+      "มีรูปร่างคล้ายสัตว์ทะเลโบราณ",
+      "เกี่ยวข้องกับน้ำและน้ำแข็ง",
+      "มีเปลือกหรือกระดองบนหลัง",
+      "มักพาผู้คนข้ามทะเล",
+      "ในบางเกมได้รับเป็นโปเกมอนพิเศษจากตัวละครในเกม",
+      "ชื่อขึ้นต้นด้วย Lap"
+    ]
+  }
+};
+
+const state = {
+  allPokemon: [],
+  roundPokemon: [],
+  currentPokemonName: null,
+  currentQuestionIndex: 0,
+  revealedHintCount: 1,
+  totalScore: 0,
+  correctCount: 0,
+  revealedAnswerCount: 0,
+  isQuestionFinished: false,
+  usingFallback: false
+};
+
+const elements = {
+  loadingArea: document.getElementById("loadingArea"),
+  gameArea: document.getElementById("gameArea"),
+  summaryArea: document.getElementById("summaryArea"),
+  loadingText: document.getElementById("loadingText"),
+  progressBar: document.getElementById("progressBar"),
+  totalScoreText: document.getElementById("totalScoreText"),
+  questionCounterText: document.getElementById("questionCounterText"),
+  correctCountText: document.getElementById("correctCountText"),
+  revealedCountText: document.getElementById("revealedCountText"),
+  currentPointText: document.getElementById("currentPointText"),
+  apiWarning: document.getElementById("apiWarning"),
+  hintProgressText: document.getElementById("hintProgressText"),
+  hintList: document.getElementById("hintList"),
+  answerInput: document.getElementById("answerInput"),
+  pokemonOptions: document.getElementById("pokemonOptions"),
+  submitButton: document.getElementById("submitButton"),
+  revealButton: document.getElementById("revealButton"),
+  nextButton: document.getElementById("nextButton"),
+  resultBox: document.getElementById("resultBox"),
+  summaryScoreText: document.getElementById("summaryScoreText"),
+  summaryCorrectText: document.getElementById("summaryCorrectText"),
+  summaryRevealText: document.getElementById("summaryRevealText"),
+  summaryAverageText: document.getElementById("summaryAverageText"),
+  restartButton: document.getElementById("restartButton")
+};
+
+window.addEventListener("DOMContentLoaded", init);
+elements.submitButton.addEventListener("click", submitAnswer);
+elements.revealButton.addEventListener("click", revealAnswer);
+elements.nextButton.addEventListener("click", goToNextQuestion);
+elements.restartButton.addEventListener("click", startNewRound);
+elements.answerInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") submitAnswer();
+});
+
+async function init() {
+  showArea("loading");
+
+  try {
+    state.allPokemon = await loadPokemonNames();
+    state.usingFallback = false;
+  } catch (error) {
+    console.error(error);
+    state.allPokemon = buildFallbackPokemonList();
+    state.usingFallback = true;
+  }
+
+  renderPokemonOptions();
+  startNewRound();
+}
+
+async function loadPokemonNames() {
+  const cached = readPokemonCache();
+  if (cached) {
+    setLoadingProgress(100, `ใช้ข้อมูลชื่อโปเกมอนจาก cache จำนวน ${cached.length} ตัว`);
+    return cached;
+  }
+
+  setLoadingProgress(5, "กำลังโหลดรายการ species จาก PokéAPI...");
+  const listResponse = await fetch(`${API_BASE}/pokemon-species?limit=100000&offset=0`);
+  if (!listResponse.ok) throw new Error("Cannot load pokemon species list");
+
+  const listData = await listResponse.json();
+  const speciesList = listData.results;
+  const loaded = [];
+  const concurrency = 20;
+  let currentIndex = 0;
+
+  async function worker() {
+    while (currentIndex < speciesList.length) {
+      const index = currentIndex;
+      currentIndex += 1;
+      const species = speciesList[index];
+
+      try {
+        const detail = await fetchPokemonSpeciesDetail(species.url);
+        loaded[index] = detail;
+      } catch (error) {
+        const englishName = formatPokemonName(species.name);
+        const japaneseName = "-";
+        const romajiName = "-";
+        const thaiName = getPrimaryThaiName(species.name, romajiName, englishName);
+        const thaiAliases = getThaiAliases(species.name);
+
+        loaded[index] = {
+          name: species.name,
+          englishName,
+          japaneseName,
+          romajiName,
+          thaiName,
+          thaiAliases,
+          displayName: buildPokemonDisplayName({ englishName, japaneseName, romajiName, thaiName })
+        };
+      }
+
+      if (index % 10 === 0 || index === speciesList.length - 1) {
+        const percent = 5 + Math.round(((index + 1) / speciesList.length) * 95);
+        setLoadingProgress(percent, `กำลังโหลดข้อมูล ${index + 1} / ${speciesList.length}`);
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: concurrency }, worker));
+
+  const finalList = loaded
+    .filter(Boolean)
+    .sort((a, b) => a.englishName.localeCompare(b.englishName));
+
+  writePokemonCache(finalList);
+  return finalList;
+}
+
+async function fetchPokemonSpeciesDetail(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Cannot load species detail: ${url}`);
+
+  const data = await response.json();
+  const englishName = getNameByLanguage(data.names, "en") || formatPokemonName(data.name);
+  const japaneseName = getNameByLanguage(data.names, "ja-Hrkt") || "-";
+  const romajiName = getNameByLanguage(data.names, "roomaji") || "-";
+  const thaiName = getPrimaryThaiName(data.name, romajiName, englishName);
+  const thaiAliases = getThaiAliases(data.name);
+
+  return {
+    name: data.name,
+    englishName,
+    japaneseName,
+    romajiName,
+    thaiName,
+    thaiAliases,
+    displayName: buildPokemonDisplayName({ englishName, japaneseName, romajiName, thaiName })
+  };
+}
+
+function getNameByLanguage(names, languageCode) {
+  const found = names.find((entry) => entry.language?.name === languageCode);
+  return found?.name || "";
+}
+
+function readPokemonCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+
+    const cache = JSON.parse(raw);
+    const isFresh = Date.now() - cache.savedAt < CACHE_MAX_AGE_MS;
+    if (!isFresh || !Array.isArray(cache.data)) return null;
+
+    return cache.data.map((pokemon) => enrichPokemonWithThaiName(pokemon));
+  } catch {
+    return null;
+  }
+}
+
+function writePokemonCache(data) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ savedAt: Date.now(), data }));
+  } catch (error) {
+    console.warn("Cannot write pokemon cache", error);
+  }
+}
+
+function buildFallbackPokemonList() {
+  return Object.keys(hintBank).map((name) => {
+    const englishName = formatPokemonName(name);
+    const japaneseName = "-";
+    const romajiName = "-";
+    const thaiName = getPrimaryThaiName(name, romajiName, englishName);
+    const thaiAliases = getThaiAliases(name);
+
+    return {
+      name,
+      englishName,
+      japaneseName,
+      romajiName,
+      thaiName,
+      thaiAliases,
+      displayName: buildPokemonDisplayName({ englishName, japaneseName, romajiName, thaiName })
+    };
+  });
+}
+
+function renderPokemonOptions() {
+  elements.pokemonOptions.innerHTML = "";
+
+  state.allPokemon.forEach((pokemon) => {
+    appendPokemonOption(pokemon, pokemon.displayName);
+
+    getSearchableNames(pokemon).forEach((searchName) => {
+      if (searchName && searchName !== pokemon.displayName) {
+        appendPokemonOption(pokemon, searchName);
+      }
+    });
+  });
+}
+
+function appendPokemonOption(pokemon, value) {
+  const option = document.createElement("option");
+  option.value = value;
+  option.dataset.name = pokemon.name;
+  elements.pokemonOptions.appendChild(option);
+}
+
+function startNewRound() {
+  resetRoundState();
+  showArea("playing");
+
+  const playableNames = Object.keys(hintBank);
+  state.roundPokemon = shuffleArray(playableNames).slice(0, Math.min(ROUND_SIZE, playableNames.length));
+
+  if (state.usingFallback) {
+    elements.apiWarning.hidden = false;
+    elements.apiWarning.textContent = "ไม่สามารถโหลดรายชื่อทั้งหมดจาก PokéAPI ได้ ตอนนี้ใช้รายชื่อเฉพาะโปเกมอนที่มีคำใบ้";
+  } else {
+    elements.apiWarning.hidden = true;
+  }
+
+  loadQuestion();
+}
+
+function resetRoundState() {
+  state.roundPokemon = [];
+  state.currentPokemonName = null;
+  state.currentQuestionIndex = 0;
+  state.revealedHintCount = 1;
+  state.totalScore = 0;
+  state.correctCount = 0;
+  state.revealedAnswerCount = 0;
+  state.isQuestionFinished = false;
+  updateScoreTexts();
+}
+
+function loadQuestion() {
+  state.currentPokemonName = state.roundPokemon[state.currentQuestionIndex];
+  state.revealedHintCount = 1;
+  state.isQuestionFinished = false;
+
+  elements.answerInput.value = "";
+  elements.answerInput.disabled = false;
+  elements.submitButton.disabled = false;
+  elements.revealButton.disabled = false;
+  elements.nextButton.disabled = true;
+  setResult("เลือกคำตอบแล้วกดตอบได้เลย", "");
+
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const totalQuestions = state.roundPokemon.length;
+  elements.questionCounterText.textContent = `ข้อที่ ${state.currentQuestionIndex + 1} / ${totalQuestions}`;
+  elements.hintProgressText.textContent = `${state.revealedHintCount} / ${HINTS_PER_POKEMON}`;
+  elements.currentPointText.textContent = getCurrentQuestionPoints();
+
+  const hints = hintBank[state.currentPokemonName].hints.slice(0, state.revealedHintCount);
+  elements.hintList.innerHTML = "";
+
+  hints.forEach((hint) => {
+    const item = document.createElement("li");
+    item.textContent = hint;
+    elements.hintList.appendChild(item);
+  });
+
+  updateScoreTexts();
+}
+
+function submitAnswer() {
+  if (state.isQuestionFinished) return;
+
+  const selectedName = getSelectedPokemonName(elements.answerInput.value);
+  if (!selectedName) {
+    setResult("กรุณาเลือกชื่อโปเกมอนจาก dropdown หรือพิมพ์ให้ตรงกับรายการ", "error");
+    return;
+  }
+
+  if (selectedName === state.currentPokemonName) {
+    const points = getCurrentQuestionPoints();
+    state.totalScore += points;
+    state.correctCount += 1;
+    finishQuestion(`ถูกต้อง! คำตอบคือ ${getPokemonDisplayName(state.currentPokemonName)} คุณได้ ${points} คะแนน`, "success");
+    return;
+  }
+
+  if (state.revealedHintCount < HINTS_PER_POKEMON) {
+    state.revealedHintCount += 1;
+    setResult("ผิด! เปิดคำใบ้เพิ่มเติมแล้ว ลองตอบอีกครั้ง", "error");
+    elements.answerInput.value = "";
+    renderQuestion();
+  } else {
+    setResult("ผิด! คำใบ้หมดแล้ว จะลองตอบอีกครั้งหรือกดเฉลยก็ได้", "error");
+    elements.answerInput.value = "";
+  }
+}
+
+function revealAnswer() {
+  if (state.isQuestionFinished) return;
+
+  state.revealedAnswerCount += 1;
+  state.revealedHintCount = HINTS_PER_POKEMON;
+  renderQuestion();
+  finishQuestion(`เฉลย: ${getPokemonDisplayName(state.currentPokemonName)} คุณได้ 0 คะแนนในข้อนี้`, "error");
+}
+
+function finishQuestion(message, resultType) {
+  state.isQuestionFinished = true;
+  elements.answerInput.disabled = true;
+  elements.submitButton.disabled = true;
+  elements.revealButton.disabled = true;
+  elements.nextButton.disabled = false;
+  setResult(message, resultType);
+  updateScoreTexts();
+}
+
+function goToNextQuestion() {
+  if (!state.isQuestionFinished) return;
+
+  state.currentQuestionIndex += 1;
+
+  if (state.currentQuestionIndex >= state.roundPokemon.length) {
+    showSummary();
+    return;
+  }
+
+  loadQuestion();
+}
+
+function showSummary() {
+  const totalQuestions = state.roundPokemon.length;
+  const average = totalQuestions > 0 ? state.totalScore / totalQuestions : 0;
+
+  elements.summaryScoreText.textContent = state.totalScore;
+  elements.summaryCorrectText.textContent = `${state.correctCount} / ${totalQuestions}`;
+  elements.summaryRevealText.textContent = state.revealedAnswerCount;
+  elements.summaryAverageText.textContent = average.toFixed(1);
+  showArea("summary");
+}
+
+function getSelectedPokemonName(inputValue) {
+  const trimmedValue = inputValue.trim();
+  if (!trimmedValue) return "";
+
+  const normalizedInput = normalizeSearchText(trimmedValue);
+  const rawInputName = normalizePokemonName(trimmedValue);
+
+  const matched = state.allPokemon.find((pokemon) => {
+    const searchableNames = getSearchableNames(pokemon);
+    return searchableNames.some((name) => normalizeSearchText(name) === normalizedInput) || pokemon.name.toLowerCase() === rawInputName;
+  });
+
+  return matched?.name || "";
+}
+
+function enrichPokemonWithThaiName(pokemon) {
+  const englishName = pokemon.englishName || formatPokemonName(pokemon.name);
+  const romajiName = pokemon.romajiName || "-";
+  const thaiName = getPrimaryThaiName(pokemon.name, romajiName, englishName);
+  const thaiAliases = pokemon.thaiAliases || getThaiAliases(pokemon.name);
+
+  return {
+    ...pokemon,
+    thaiName,
+    thaiAliases,
+    displayName: buildPokemonDisplayName({
+      englishName,
+      japaneseName: pokemon.japaneseName || "-",
+      romajiName,
+      thaiName
+    })
+  };
+}
+
+function buildPokemonDisplayName({ englishName, japaneseName, romajiName, thaiName }) {
+  const extraNames = [japaneseName, romajiName, thaiName].filter((name) => name && name !== "-");
+  return extraNames.length > 0 ? `${englishName} (${extraNames.join(" / ")})` : englishName;
+}
+
+function getPrimaryThaiName(name, romajiName = "", englishName = "") {
+  if (hintBank[name]?.thaiName) return hintBank[name].thaiName;
+
+  const sourceName = romajiName && romajiName !== "-" ? romajiName : englishName;
+  return romajiToThaiReading(sourceName);
+}
+
+function getThaiAliases(name) {
+  return hintBank[name]?.thaiAliases || [];
+}
+
+function romajiToThaiReading(value) {
+  if (!value || value === "-") return "-";
+
+  const words = value
+    .toLowerCase()
+    .replace(/[♀]/g, " female")
+    .replace(/[♂]/g, " male")
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/[\s-]+/)
+    .filter(Boolean);
+
+  const converted = words.map(convertRomajiWordToThai).filter(Boolean).join(" ");
+  return converted || "-";
+}
+
+function convertRomajiWordToThai(word) {
+  const specialWords = {
+    mr: "มิสเตอร์",
+    mime: "ไมม์",
+    porygon: "โพรีกอน",
+    pikachu: "ปิกาจู",
+    eevee: "อีวุย",
+    mew: "มิว",
+    mewtwo: "มิวทู"
+  };
+
+  if (specialWords[word]) return specialWords[word];
+  if (/^\d+$/.test(word)) return word;
+
+  const chunks = [
+    ["kyo", "เคียว"], ["kyu", "คิว"], ["kya", "เคีย"],
+    ["gyo", "เกียว"], ["gyu", "กิว"], ["gya", "เกีย"],
+    ["sho", "โช"], ["shu", "ชู"], ["sha", "ชา"],
+    ["cho", "โจ"], ["chu", "จู"], ["cha", "ชา"],
+    ["nyo", "เนียว"], ["nyu", "นิว"], ["nya", "เนีย"],
+    ["hyo", "เฮียว"], ["hyu", "ฮิว"], ["hya", "เฮีย"],
+    ["myo", "เมียว"], ["myu", "มิว"], ["mya", "เมีย"],
+    ["ryo", "เรียว"], ["ryu", "ริว"], ["rya", "เรีย"],
+    ["pyo", "เพียว"], ["pyu", "พิว"], ["pya", "เพีย"],
+    ["byo", "เบียว"], ["byu", "บิว"], ["bya", "เบีย"],
+    ["ja", "จา"], ["ju", "จู"], ["jo", "โจ"], ["ji", "จิ"],
+    ["tsu", "สึ"], ["shi", "ชิ"], ["chi", "จิ"], ["fu", "ฟุ"],
+    ["ka", "คา"], ["ki", "คิ"], ["ku", "คุ"], ["ke", "เค"], ["ko", "โค"],
+    ["ga", "กา"], ["gi", "กิ"], ["gu", "กุ"], ["ge", "เก"], ["go", "โก"],
+    ["sa", "ซา"], ["si", "ซิ"], ["su", "สุ"], ["se", "เซ"], ["so", "โซ"],
+    ["za", "ซา"], ["zi", "ซิ"], ["zu", "ซุ"], ["ze", "เซ"], ["zo", "โซ"],
+    ["ta", "ตา"], ["ti", "ติ"], ["tu", "ทุ"], ["te", "เท"], ["to", "โต"],
+    ["da", "ดา"], ["di", "ดิ"], ["du", "ดุ"], ["de", "เด"], ["do", "โด"],
+    ["na", "นา"], ["ni", "นิ"], ["nu", "นุ"], ["ne", "เน"], ["no", "โน"],
+    ["ha", "ฮา"], ["hi", "ฮิ"], ["hu", "ฮุ"], ["he", "เฮ"], ["ho", "โฮ"],
+    ["ba", "บา"], ["bi", "บิ"], ["bu", "บุ"], ["be", "เบ"], ["bo", "โบ"],
+    ["pa", "พา"], ["pi", "ปิ"], ["pu", "พุ"], ["pe", "เพ"], ["po", "โป"],
+    ["ma", "มา"], ["mi", "มิ"], ["mu", "มุ"], ["me", "เม"], ["mo", "โม"],
+    ["ya", "ยา"], ["yu", "ยุ"], ["yo", "โย"],
+    ["ra", "รา"], ["ri", "ริ"], ["ru", "รุ"], ["re", "เร"], ["ro", "โร"],
+    ["wa", "วา"], ["wo", "โว"],
+    ["a", "อา"], ["i", "อิ"], ["u", "อุ"], ["e", "เอ"], ["o", "โอ"],
+    ["n", "น"]
+  ];
+
+  let index = 0;
+  let result = "";
+
+  while (index < word.length) {
+    const current = word[index];
+    const next = word[index + 1];
+
+    if (current === next && !"aeioun".includes(current)) {
+      result += "ッ";
+      index += 1;
+      continue;
+    }
+
+    const matched = chunks.find(([roman]) => word.startsWith(roman, index));
+    if (matched) {
+      result += matched[1];
+      index += matched[0].length;
+    } else {
+      result += current;
+      index += 1;
+    }
+  }
+
+  return result.replace(/ッ/g, "");
+}
+
+function getSearchableNames(pokemon) {
+  return [
+    pokemon.displayName,
+    pokemon.englishName,
+    pokemon.name,
+    pokemon.japaneseName,
+    pokemon.romajiName,
+    pokemon.thaiName,
+    ...(pokemon.thaiAliases || [])
+  ].filter(Boolean);
+}
+
+function normalizeSearchText(value) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function getCurrentQuestionPoints() {
+  return Math.max(HINTS_PER_POKEMON - state.revealedHintCount + 1, 1);
+}
+
+function getPokemonDisplayName(name) {
+  const found = state.allPokemon.find((pokemon) => pokemon.name === name);
+  return found?.displayName || formatPokemonName(name);
+}
+
+function updateScoreTexts() {
+  elements.totalScoreText.textContent = state.totalScore;
+  elements.correctCountText.textContent = state.correctCount;
+  elements.revealedCountText.textContent = state.revealedAnswerCount;
+}
+
+function setResult(message, type) {
+  elements.resultBox.textContent = message;
+  elements.resultBox.className = "result-box";
+  if (type) elements.resultBox.classList.add(type);
+}
+
+function setLoadingProgress(percent, message) {
+  elements.progressBar.style.width = `${Math.min(Math.max(percent, 0), 100)}%`;
+  elements.loadingText.textContent = message;
+}
+
+function showArea(area) {
+  elements.loadingArea.hidden = area !== "loading";
+  elements.gameArea.hidden = area !== "playing";
+  elements.summaryArea.hidden = area !== "summary";
+}
+
+function formatPokemonName(name) {
+  return name
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function normalizePokemonName(value) {
+  return value.trim().toLowerCase().replace(/\s+/g, "-");
+}
+
+function shuffleArray(array) {
+  const cloned = [...array];
+  for (let index = cloned.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [cloned[index], cloned[randomIndex]] = [cloned[randomIndex], cloned[index]];
+  }
+  return cloned;
+}
